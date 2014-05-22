@@ -27,6 +27,7 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 /**
@@ -37,7 +38,7 @@ import java.util.Locale;
  */
 public abstract class ContentStreamBase implements ContentStream
 {
-  public static final String DEFAULT_CHARSET = "utf-8";
+  public static final String DEFAULT_CHARSET = StandardCharsets.UTF_8.name();
   
   protected String name;
   protected String sourceInfo;
@@ -233,4 +234,27 @@ public abstract class ContentStreamBase implements ContentStream
   public void setSourceInfo(String sourceInfo) {
     this.sourceInfo = sourceInfo;
   }
+  
+  /**
+   * Construct a <code>ContentStream</code> from a <code>File</code>
+   */
+  public static class ByteArrayStream extends ContentStreamBase
+  {
+    private final byte[] bytes;
+    
+    public ByteArrayStream( byte[] bytes, String source ) {
+      this.bytes = bytes; 
+      
+      this.contentType = null;
+      name = source;
+      size = new Long(bytes.length);
+      sourceInfo = source;
+    }
+
+
+    @Override
+    public InputStream getStream() throws IOException {
+      return new ByteArrayInputStream( bytes );
+    }
+  }  
 }

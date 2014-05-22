@@ -33,14 +33,14 @@ import java.util.concurrent.ConcurrentHashMap;
  *  the same time by two threads, because in this case you
  *  cannot in general know which thread "won". */
 
-public abstract class LiveFieldValues<T> implements ReferenceManager.RefreshListener, Closeable {
+public abstract class LiveFieldValues<S,T> implements ReferenceManager.RefreshListener, Closeable {
 
-  private volatile Map<String,T> current = new ConcurrentHashMap<String,T>();
-  private volatile Map<String,T> old = new ConcurrentHashMap<String,T>();
-  private final ReferenceManager<IndexSearcher> mgr;
+  private volatile Map<String,T> current = new ConcurrentHashMap<>();
+  private volatile Map<String,T> old = new ConcurrentHashMap<>();
+  private final ReferenceManager<S> mgr;
   private final T missingValue;
 
-  public LiveFieldValues(ReferenceManager<IndexSearcher> mgr, T missingValue) {
+  public LiveFieldValues(ReferenceManager<S> mgr, T missingValue) {
     this.missingValue = missingValue;
     this.mgr = mgr;
     mgr.addListener(this);
@@ -58,7 +58,7 @@ public abstract class LiveFieldValues<T> implements ReferenceManager.RefreshList
     // map.  While reopen is running, any lookup will first
     // try this new map, then fallback to old, then to the
     // current searcher:
-    current = new ConcurrentHashMap<String,T>();
+    current = new ConcurrentHashMap<>();
   }
 
   @Override
@@ -69,7 +69,7 @@ public abstract class LiveFieldValues<T> implements ReferenceManager.RefreshList
     // entries in it, which is fine: it means they were
     // actually already included in the previously opened
     // reader.  So we can safely clear old here:
-    old = new ConcurrentHashMap<String,T>();
+    old = new ConcurrentHashMap<>();
   }
 
   /** Call this after you've successfully added a document
@@ -114,7 +114,7 @@ public abstract class LiveFieldValues<T> implements ReferenceManager.RefreshList
         // It either does not exist in the index, or, it was
         // already flushed & NRT reader was opened on the
         // segment, so fallback to current searcher:
-        IndexSearcher s = mgr.acquire();
+        S s = mgr.acquire();
         try {
           return lookupFromSearcher(s, id);
         } finally {
@@ -128,6 +128,6 @@ public abstract class LiveFieldValues<T> implements ReferenceManager.RefreshList
    *  in an NRT IndexSearcher.  You must implement this to
    *  go look up the value (eg, via doc values, field cache,
    *  stored fields, etc.). */
-  protected abstract T lookupFromSearcher(IndexSearcher s, String id) throws IOException;
+  protected abstract T lookupFromSearcher(S s, String id) throws IOException;
 }
 

@@ -38,7 +38,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util._TestUtil;
+import org.apache.lucene.util.TestUtil;
 
 public class TestDirectoryReaderReopen extends LuceneTestCase {
   
@@ -142,7 +142,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
         }
       }
     } finally {
-      iwriter.close();
+      iwriter.shutdown();
       reader.close();
     }
   }
@@ -196,14 +196,14 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
   public void testThreadSafety() throws Exception {
     final Directory dir = newDirectory();
     // NOTE: this also controls the number of threads!
-    final int n = _TestUtil.nextInt(random(), 20, 40);
+    final int n = TestUtil.nextInt(random(), 20, 40);
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(
         TEST_VERSION_CURRENT, new MockAnalyzer(random())));
     for (int i = 0; i < n; i++) {
       writer.addDocument(createDocument(i, 3));
     }
     writer.forceMerge(1);
-    writer.close();
+    writer.shutdown();
 
     final TestReopen test = new TestReopen() {      
       @Override
@@ -211,7 +211,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
        IndexWriter modifier = new IndexWriter(dir, new IndexWriterConfig(
          TEST_VERSION_CURRENT, new MockAnalyzer(random())));
        modifier.addDocument(createDocument(n + i, 6));
-       modifier.close();
+       modifier.shutdown();
       }
 
       @Override
@@ -275,7 +275,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
                 }
               }
               synchronized(this) {
-                wait(_TestUtil.nextInt(random(), 1, 100));
+                wait(TestUtil.nextInt(random(), 1, 100));
               }
             }
           }
@@ -294,7 +294,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
               }
               
               synchronized(this) {
-                wait(_TestUtil.nextInt(random(), 1, 100));
+                wait(TestUtil.nextInt(random(), 1, 100));
               }
             }
           }
@@ -444,7 +444,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
       w.forceMerge(1);
     }
     
-    w.close();
+    w.shutdown();
 
     DirectoryReader r = DirectoryReader.open(dir);
     if (multiSegment) {
@@ -485,13 +485,13 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
         IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(TEST_VERSION_CURRENT, new MockAnalyzer(random())));
         w.deleteDocuments(new Term("field2", "a11"));
         w.deleteDocuments(new Term("field2", "b30"));
-        w.close();
+        w.shutdown();
         break;
       }
       case 1: {
         IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(TEST_VERSION_CURRENT, new MockAnalyzer(random())));
         w.forceMerge(1);
-        w.close();
+        w.shutdown();
         break;
       }
       case 2: {
@@ -500,13 +500,13 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
         w.forceMerge(1);
         w.addDocument(createDocument(102, 4));
         w.addDocument(createDocument(103, 4));
-        w.close();
+        w.shutdown();
         break;
       }
       case 3: {
         IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(TEST_VERSION_CURRENT, new MockAnalyzer(random())));
         w.addDocument(createDocument(101, 4));
-        w.close();
+        w.shutdown();
         break;
       }
     }
@@ -552,19 +552,19 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
       Document doc = new Document();
       doc.add(newStringField("id", ""+i, Field.Store.NO));
       writer.addDocument(doc);
-      Map<String,String> data = new HashMap<String,String>();
+      Map<String,String> data = new HashMap<>();
       data.put("index", i+"");
       writer.setCommitData(data);
       writer.commit();
     }
     for(int i=0;i<4;i++) {
       writer.deleteDocuments(new Term("id", ""+i));
-      Map<String,String> data = new HashMap<String,String>();
+      Map<String,String> data = new HashMap<>();
       data.put("index", (4+i)+"");
       writer.setCommitData(data);
       writer.commit();
     }
-    writer.close();
+    writer.shutdown();
 
     DirectoryReader r = DirectoryReader.open(dir);
     assertEquals(0, r.numDocs());
@@ -614,7 +614,7 @@ public class TestDirectoryReaderReopen extends LuceneTestCase {
     assertNotNull(r2);
     r.close();
     assertEquals(1, r2.numDocs());
-    w.close();
+    w.shutdown();
     r2.close();
     dir.close();
   }

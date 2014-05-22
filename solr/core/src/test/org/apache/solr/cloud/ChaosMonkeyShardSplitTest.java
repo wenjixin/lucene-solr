@@ -31,6 +31,7 @@ import org.apache.solr.handler.component.HttpShardHandlerFactory;
 import org.apache.zookeeper.KeeperException;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -41,6 +42,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Test split phase that occurs when a Collection API split call is made.
  */
 @Slow
+@Ignore("SOLR-4944")
 public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
 
   static final int TIMEOUT = 10000;
@@ -63,7 +65,7 @@ public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
     waitForThingsToLevelOut(15);
 
     ClusterState clusterState = cloudClient.getZkStateReader().getClusterState();
-    DocRouter router = clusterState.getCollection(AbstractDistribZkTestBase.DEFAULT_COLLECTION).getRouter();
+    final DocRouter router = clusterState.getCollection(AbstractDistribZkTestBase.DEFAULT_COLLECTION).getRouter();
     Slice shard1 = clusterState.getSlice(AbstractDistribZkTestBase.DEFAULT_COLLECTION, SHARD1);
     DocRouter.Range shard1Range = shard1.getRange() != null ? shard1.getRange() : router.fullRange();
     final List<DocRouter.Range> ranges = router.partitionRange(2, shard1Range);
@@ -78,16 +80,17 @@ public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
     try {
       del("*:*");
       for (int id = 0; id < 100; id++) {
-        indexAndUpdateCount(ranges, docCounts, id);
+        indexAndUpdateCount(router, ranges, docCounts, String.valueOf(id), id);
       }
       commit();
 
       indexThread = new Thread() {
         @Override
         public void run() {
-          for (int id = 101; id < atLeast(401); id++) {
+          int max = atLeast(401);
+          for (int id = 101; id < max; id++) {
             try {
-              indexAndUpdateCount(ranges, docCounts, id);
+              indexAndUpdateCount(router, ranges, docCounts, String.valueOf(id), id);
               Thread.sleep(atLeast(25));
             } catch (Exception e) {
               log.error("Exception while adding doc", e);
@@ -132,7 +135,7 @@ public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
       killerThread.start();
       killCounter.incrementAndGet();
 
-      splitShard(SHARD1);
+      splitShard(AbstractDistribZkTestBase.DEFAULT_COLLECTION, SHARD1, null, null);
 
       log.info("Layout after split: \n");
       printLayout();
@@ -181,23 +184,23 @@ public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
               Thread.sleep(800);
               overseerClient.close();
               overseerClient = electNewOverseer(zkAddress);
-            } catch (Throwable e) {
+            } catch (Exception e) {
               // e.printStackTrace();
             }
           }
           try {
             Thread.sleep(100);
-          } catch (Throwable e) {
+          } catch (Exception e) {
             // e.printStackTrace();
           }
         }
-      } catch (Throwable t) {
+      } catch (Exception t) {
         // ignore
       } finally {
         if (overseerClient != null) {
           try {
             overseerClient.close();
-          } catch (Throwable t) {
+          } catch (Exception t) {
             // ignore
           }
         }
@@ -253,7 +256,7 @@ public class ChaosMonkeyShardSplitTest extends ShardSplitTest {
 
     // TODO: close Overseer
     Overseer overseer = new Overseer(
-        new HttpShardHandlerFactory().getShardHandler(), "/admin/cores", reader);
+        new HttpShardHandlerFactory().getShardHandler(), "/admin/cores", reader,null);
     overseer.close();
     ElectionContext ec = new OverseerElectionContext(zkClient, overseer,
         address.replaceAll("/", "_"));

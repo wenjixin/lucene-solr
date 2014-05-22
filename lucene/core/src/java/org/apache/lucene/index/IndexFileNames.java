@@ -199,7 +199,23 @@ public final class IndexFileNames {
     return filename;
   }  
 
-  // All files created by codecs much match this pattern (we
-  // check this in SegmentInfo.java):
-  static final Pattern CODEC_FILE_PATTERN = Pattern.compile("_[a-z0-9]+(_.*)?\\..*");
+  /**
+   * Return the extension (anything after the first '.'),
+   * or null if there is no '.' in the file name.
+   */
+  public static String getExtension(String filename) {
+    final int idx = filename.indexOf('.');
+    if (idx == -1) {
+      return null;
+    } else {
+      return filename.substring(idx + 1, filename.length());
+    }
+  }
+
+  /**
+   * All files created by codecs much match this pattern (checked in
+   * SegmentInfo).
+   */
+  public static final Pattern CODEC_FILE_PATTERN = Pattern.compile("_[a-z0-9]+(_.*)?\\..*");
+  
 }

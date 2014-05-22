@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.ngram;
  */
 
 import org.apache.lucene.analysis.util.TokenizerFactory;
-import org.apache.lucene.util.AttributeSource.AttributeFactory;
+import org.apache.lucene.util.AttributeFactory;
 
 import java.io.Reader;
 import java.util.Map;
@@ -28,28 +28,26 @@ import java.util.Map;
  * <pre class="prettyprint">
  * &lt;fieldType name="text_edgngrm" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
- *     &lt;tokenizer class="solr.EdgeNGramTokenizerFactory" side="front" minGramSize="1" maxGramSize="1"/&gt;
+ *     &lt;tokenizer class="solr.EdgeNGramTokenizerFactory" minGramSize="1" maxGramSize="1"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
  */
 public class EdgeNGramTokenizerFactory extends TokenizerFactory {
   private final int maxGramSize;
   private final int minGramSize;
-  private final String side;
 
   /** Creates a new EdgeNGramTokenizerFactory */
   public EdgeNGramTokenizerFactory(Map<String, String> args) {
     super(args);
     minGramSize = getInt(args, "minGramSize", EdgeNGramTokenizer.DEFAULT_MIN_GRAM_SIZE);
     maxGramSize = getInt(args, "maxGramSize", EdgeNGramTokenizer.DEFAULT_MAX_GRAM_SIZE);
-    side = get(args, "side", EdgeNGramTokenFilter.Side.FRONT.getLabel());
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
   }
   
   @Override
-  public EdgeNGramTokenizer create(AttributeFactory factory, Reader input) {
-    return new EdgeNGramTokenizer(factory, input, side, minGramSize, maxGramSize);
+  public EdgeNGramTokenizer create(AttributeFactory factory) {
+    return new EdgeNGramTokenizer(luceneMatchVersion, factory, minGramSize, maxGramSize);
   }
 }

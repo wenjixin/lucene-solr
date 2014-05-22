@@ -19,7 +19,9 @@ package org.apache.lucene.analysis.phonetic;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.io.StringReader;
 import java.util.HashSet;
+import java.util.regex.Pattern;
 
 import org.apache.commons.codec.language.bm.NameType;
 import org.apache.commons.codec.language.bm.PhoneticEngine;
@@ -29,15 +31,18 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.Tokenizer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
+import org.apache.lucene.analysis.miscellaneous.PatternKeywordMarkerFilter;
+import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
 import org.junit.Ignore;
 
 /** Tests {@link BeiderMorseFilter} */
 public class TestBeiderMorseFilter extends BaseTokenStreamTestCase {
   private Analyzer analyzer = new Analyzer() {
     @Override
-    protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
-      Tokenizer tokenizer = new MockTokenizer(reader, MockTokenizer.WHITESPACE, false);
+    protected TokenStreamComponents createComponents(String fieldName) {
+      Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
       return new TokenStreamComponents(tokenizer, 
           new BeiderMorseFilter(tokenizer, new PhoneticEngine(NameType.GENERIC, RuleType.EXACT, true)));
     }
@@ -66,8 +71,8 @@ public class TestBeiderMorseFilter extends BaseTokenStreamTestCase {
     }});
     Analyzer analyzer = new Analyzer() {
       @Override
-      protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
-        Tokenizer tokenizer = new MockTokenizer(reader, MockTokenizer.WHITESPACE, false);
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new MockTokenizer( MockTokenizer.WHITESPACE, false);
         return new TokenStreamComponents(tokenizer, 
             new BeiderMorseFilter(tokenizer, 
                 new PhoneticEngine(NameType.GENERIC, RuleType.EXACT, true), languages));
@@ -96,11 +101,28 @@ public class TestBeiderMorseFilter extends BaseTokenStreamTestCase {
   public void testEmptyTerm() throws IOException {
     Analyzer a = new Analyzer() {
       @Override
-      protected TokenStreamComponents createComponents(String fieldName, Reader reader) {
-        Tokenizer tokenizer = new KeywordTokenizer(reader);
+      protected TokenStreamComponents createComponents(String fieldName) {
+        Tokenizer tokenizer = new KeywordTokenizer();
         return new TokenStreamComponents(tokenizer, new BeiderMorseFilter(tokenizer, new PhoneticEngine(NameType.GENERIC, RuleType.EXACT, true)));
       }
     };
-    checkOneTermReuse(a, "", "");
+    checkOneTerm(a, "", "");
+  }
+  
+  public void testCustomAttribute() throws IOException {
+    TokenStream stream = new MockTokenizer(MockTokenizer.KEYWORD, false);
+    ((Tokenizer)stream).setReader(new StringReader("D'Angelo"));
+    stream = new PatternKeywordMarkerFilter(stream, Pattern.compile(".*"));
+    stream = new BeiderMorseFilter(stream, new PhoneticEngine(NameType.GENERIC, RuleType.EXACT, true));
+    KeywordAttribute keyAtt = stream.addAttribute(KeywordAttribute.class);
+    stream.reset();
+    int i = 0;
+    while(stream.incrementToken()) {
+      assertTrue(keyAtt.isKeyword());
+      i++;
+    }
+    assertEquals(12, i);
+    stream.end();
+    stream.close();
   }
 }
